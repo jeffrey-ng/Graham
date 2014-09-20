@@ -1,4 +1,6 @@
 import java.awt.*;
+import java.io.File;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.List;
 
@@ -12,51 +14,69 @@ public class CoordinateGenerator implements Runnable {
     private static int count = 0;
     private int problemSize;
     Random position;
+    String file;
     volatile boolean finished = false;
     private static final Object countLock = new Object();
 
 
-    public CoordinateGenerator (Set<Point> points, int problemSize) {
+    public CoordinateGenerator (Set<Point> points, int problemSize, String filename) {
         this.problemSize = problemSize;
         this.points = points;
         position = new Random();
+        file = filename;
     }
 
-    public void stopThread() {
-        finished = true;
-    }
 
     public void run(){
+      ArrayList<Point> pointss = new ArrayList<Point>();
+      for (int i = 0; i < problemSize;i++) {
+          Point test = new Point();
+          test.x = position.nextInt();
+          test.y = position.nextInt();
+          pointss.add(test);
+          //insertSet(test);
+      }
+        for (int i =0;i<pointss.size();i++)
+        {
+            insertSet(pointss.get(i));
+        }
+//        try
+//        {
+//            PrintWriter print = new PrintWriter(new File(file));
+//            print.println(pointss.size());
+//            for (int i =0;i<pointss.size();i++)
+//            {
+//                print.println(pointss.get(i));
+//            }
+//            print.close();
+//        } catch (Exception e)
+//        {
+//
+//        }
 
-            while (!finished) {
-                Thread thread = Thread.currentThread();
-                System.out.println("ThreadName: "+ thread.getName());
-                Point test = new Point();
-                test.x = position.nextInt();
-                test.y = position.nextInt();
-                insertSet(test);
-                //incrementCount();
-
-            }
-
-        return;
     }
 
 
     private void insertSet(Point p) {
         synchronized (countLock) {
-            if (count < problemSize) {
-                count++;
-                points.add(p);
-                System.out.println("count:" + count);
-            } else {
-                finished = true;
-            }
+//            if (count < problemSize) {
+//                count++;
+//                points.add(p);
+////                System.out.println("count:" + count);
+//            } else {
+//                finished = true;
+//            }
+            points.add(p);
         }
     }
 
-    public static synchronized void incrementCount() {
-        count++;
+    public  synchronized void incrementCount() {
+        if (count < problemSize) {
+            count++;
+        } else {
+            finished = true;
+        }
+
     }
 
     public static synchronized int getCount() {
