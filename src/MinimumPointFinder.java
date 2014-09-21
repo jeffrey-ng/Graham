@@ -26,19 +26,16 @@ public class MinimumPointFinder implements Runnable{
 
     }
 
-    private Point findMin(Point[] points)
+    public static Point findMin(Point[] points)
     {
         Point small = points[0];
         for (int i =0;i<points.length;i++)
         {
-            //TODO: refactor later. Ugly
-            if (points[i].getY() < small.getY())
-            {
-                small = points[i];
-            } else if (points[i].getY() == small.getY() &&
-                    points[i].getX() < small.getX())
-            {
-                small = points[i];
+            Point temp = points[i];
+
+            if(temp.getY() < small.getY() || ((temp.getY() == small.getY()) && (temp.getX() == small.getX()))) {
+                small = temp;
+
             }
         }
 

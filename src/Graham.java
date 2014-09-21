@@ -1,3 +1,5 @@
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
+
 import java.awt.*;
 import java.util.*;
 import java.util.List;
@@ -8,6 +10,8 @@ import java.util.List;
 
 public class Graham {
 
+    private enum Turn {CLOCKWISE,COUNTER,COLIN};
+
     public static void main(String[] args) throws InterruptedException{
 
         int questionNumber = Integer.parseInt(args[0]);
@@ -16,12 +20,55 @@ public class Graham {
 
 
         //Part 1
+        long startTimeRandom=System.currentTimeMillis();
+
         Object[] generatedVertices = RandomVertices(problemSize,threadCount);
+        Point[] generatedPoints = Arrays.copyOf(generatedVertices, generatedVertices.length, Point[].class);
+        final long timeRandom = System.currentTimeMillis() - startTimeRandom;
+
+        System.out.println("Time for Random: "+ timeRandom);
 
         //Part 2
-        Point smallPoint = minPoint(generatedVertices,threadCount);
+        long startTimeMin=System.currentTimeMillis();
 
-        System.out.println(generatedVertices.length);
+        Point smallPoint = minPoint(generatedPoints,threadCount);
+        final long timeMin = System.currentTimeMillis() - startTimeMin;
+        System.out.println("Time for Min: "+ timeMin);
+
+
+        long startTimeSort=System.currentTimeMillis();
+        ConcurrentQuickSort q = new ConcurrentQuickSort(generatedPoints,0,generatedPoints.length-1,smallPoint,threadCount);
+
+        Thread t =new Thread(q);
+        t.start();
+        try
+        {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        final long timeSort = System.currentTimeMillis() - startTimeSort;
+        System.out.println("Time for Sort: "+ timeSort);
+
+
+        boolean sorted = true;
+
+        for (int i = 0; i < generatedPoints.length - 1; i++) {
+            Point a = generatedPoints[i];
+            Point b = generatedPoints[i+1];
+            if (comparePolarPoints(a,b,smallPoint) == 1) {
+                System.out.println("Not sorted");
+                sorted = false;
+                break;
+            }
+        }
+
+        if(sorted)System.out.println("Sorted");
+        System.out.println(generatedPoints.length);
+
+        Point[] ConvexHullArray = ConvexHull(generatedPoints);
+
+        System.out.println(ConvexHullArray.length);
 
     }
 
@@ -38,7 +85,6 @@ public class Graham {
         }
 
 
-        long startTime=System.currentTimeMillis();
        i=0;
         while (i< threads.size())
         {
@@ -57,15 +103,12 @@ public class Graham {
             }
 
         }
-        final long time = System.currentTimeMillis() - startTime;
-        System.out.println("Total Time: "+time);
         return points.toArray();
     }
 
-    private static Point minPoint(Object[] p, int threadCount) {
+    public static Point minPoint(Point[] points, int threadCount) {
 
 
-        Point[] points = Arrays.copyOf(p,p.length,Point[].class);
         ArrayList<Point> minPoints = new ArrayList<Point>();
         List<Thread> threads = new ArrayList<Thread>();
         int perThreadSize = points.length/threadCount;
@@ -102,23 +145,85 @@ public class Graham {
 
         }
 
-        Point small = minPoints.get(0);
-
-        for (i =0;i<minPoints.size();i++)
-        {
-            //TODO: refactor later. Ugly
-            if (points[i].getY() < small.getY())
-            {
-                small = points[i];
-            } else if (points[i].getY() == small.getY() &&
-                    points[i].getX() < small.getX())
-            {
-                small = points[i];
-            }
-        }
-
-        System.out.println(small);
+        Point small = MinimumPointFinder.findMin(points);
         return small;
     }
+    public static int comparePolarPoints(Point a, Point b, Point min)
+    {
+        try
+        {
+            if (a==b || a.equals(b))
+            {
 
+                return 0;
+            }
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
+
+
+
+        double tA = Math.atan2(a.getY() - min.getY(), a.getX() - min.getX());
+        double tB = Math.atan2(b.getY() - min.getY(), b.getX() - min.getX());
+
+        if (tA < tB)
+        {return -1;}
+        else if (tA > tB)
+        {return 1;}
+        else {
+            double dA = Math.sqrt(((min.getX() - a.getX()) * (min.getX()- a.getX()))+((min.getY() - a.getY()) * (min.getY()- a.getY())));
+            double dB = Math.sqrt(((min.getX() - b.getX()) * (min.getX()- b.getX()))+((min.getY() - b.getY()) * (min.getY()- b.getY())));
+            if (dA < dB) return -1;
+            else return 1;
+        }
+
+    }
+
+    public static Point[] ConvexHull(Point[] sortedPoints)
+    {
+
+        //First point is min point
+        Stack<Point> s = new Stack<Point>();
+        s.push(sortedPoints[0]);
+        s.push(sortedPoints[1]);
+
+        for (int i = 2; i < sortedPoints.length;i++)
+        {
+            Point front = sortedPoints[i];
+            Point middle = s.pop();
+            Point back = s.peek();
+
+            int t = CrossProduct(back,middle,front);
+
+            //Counter Clockwise
+            if (t>0)
+            {
+                s.push(middle);
+                s.push(front);
+            }
+            //Clockwise
+            else if (t < 0)
+            {
+                i--;
+            }
+            //Colin
+            else
+            {
+                s.push(front);
+            }
+        }
+        //s.push(sortedPoints[0]);
+
+        Object[] convexArray = s.toArray();
+
+        return Arrays.copyOf(convexArray, convexArray.length, Point[].class);
+
+    }
+
+    private static int CrossProduct(Point a, Point b, Point c){
+        //Cross Product
+        double cp = ((b.getX() - a.getX()) * (c.getY() - a.getY())) - ((b.getY() - a.getY()) * (c.getX()-a.getX()));
+        return (int)cp;
+
+    }
 }
