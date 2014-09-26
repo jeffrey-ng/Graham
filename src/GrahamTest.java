@@ -5,9 +5,11 @@ import static org.junit.Assert.*;
 import java.awt.*;
 
 public class GrahamTest extends TestCase {
+    int[] threadCounts = new int[]{1,2,4,8,16,32};
 
     @Test
     public void testMain() throws Exception {
+
         Point a = new Point(2, 4);
         Point b = new Point(3, 5);
         Point c = new Point(3, 3);
@@ -22,17 +24,11 @@ public class GrahamTest extends TestCase {
 
 
 //        Point[] points = new Point[]{a, b, c, d, e, f, g};
-        ConcurrentQuickSort q = new ConcurrentQuickSort(points,0,points.length-1,f,2);
+          Point[] npoints = Graham.polarSort(points,32,f);
 
-        Thread t =new Thread(q);
-        t.start();
-        try
-        {
-            t.join();
-        } catch (InterruptedException exc) {
-        }
 
-        Point[] convex = Graham.ConvexHull(points);
+
+        Point[] convex = Graham.ConvexHull(npoints);
 
         assertEquals(convex.length, 4);
 
@@ -101,18 +97,11 @@ public class GrahamTest extends TestCase {
 
 
 
-        Point[] points = new Point[]{a, b, c, d, e, f, g};
+        Point[] oPoints = new Point[]{a, b, c, d, e, f, g};
 
 
-        ConcurrentQuickSort q = new ConcurrentQuickSort(points,0,points.length-1,c,1);
+        Point[] points = Graham.polarSort(oPoints,32,c);
 
-        Thread t =new Thread(q);
-        t.start();
-        try
-        {
-            t.join();
-        } catch (InterruptedException exc) {
-        }
 
 
         assertEquals(points.length, 7);

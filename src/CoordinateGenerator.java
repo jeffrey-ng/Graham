@@ -3,85 +3,99 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by jeffreyng on 2014-09-17.
  */
-public class CoordinateGenerator implements Runnable {
+public class CoordinateGenerator {
 
 
-    private Set<Point> points;
-    private static int count = 0;
+    public Map<Point, Boolean> points = new ConcurrentHashMap<Point, Boolean>();
+    public Point[] generatedPoints;
+    List<Thread> threads = new ArrayList<Thread>();
     private int problemSize;
+    private int threadCount;
     Random position;
-    String file;
-    volatile boolean finished = false;
-    private static final Object countLock = new Object();
 
 
-    public CoordinateGenerator (Set<Point> points, int problemSize, String filename) {
+
+    public CoordinateGenerator(int problemSize, int threadCount)
+    {
         this.problemSize = problemSize;
-        this.points = points;
+        this.threadCount = threadCount;
+        this.generatedPoints = new Point[problemSize];
+    }
+
+    public Point[] generateRandom()
+    {
         position = new Random();
-        file = filename;
-    }
-
-
-    public void run(){
-      ArrayList<Point> pointss = new ArrayList<Point>();
-      for (int i = 0; i < problemSize;i++) {
-          Point test = new Point();
-          test.x = position.nextInt();
-          test.y = position.nextInt();
-          pointss.add(test);
-          //insertSet(test);
-      }
-        for (int i =0;i<pointss.size();i++)
+        int padding = 2;
+        final Random[] rand = new Random[threadCount * padding];
+        for (int i =0;i<threadCount*padding;++i)
         {
-            insertSet(pointss.get(i));
-        }
-//        try
-//        {
-//            PrintWriter print = new PrintWriter(new File(file));
-//            print.println(pointss.size());
-//            for (int i =0;i<pointss.size();i++)
-//            {
-//                print.println(pointss.get(i));
-//            }
-//            print.close();
-//        } catch (Exception e)
-//        {
-//
-//        }
-
-    }
-
-
-    private void insertSet(Point p) {
-        synchronized (countLock) {
-//            if (count < problemSize) {
-//                count++;
-//                points.add(p);
-////                System.out.println("count:" + count);
-//            } else {
-//                finished = true;
-//            }
-            points.add(p);
-        }
-    }
-
-    public  synchronized void incrementCount() {
-        if (count < problemSize) {
-            count++;
-        } else {
-            finished = true;
+            rand[i]=new Random();
         }
 
+        points.clear();
+        int perThreadSize = problemSize / threadCount;
+        int perThreadRemainder = problemSize % threadCount;
+        int last = 0;
+        for (int i = 0; i < threadCount; i++) {
+            int incrementSize = (i < perThreadRemainder) ? perThreadSize + 1 : perThreadSize;
+            int start = last;
+            int end = start + incrementSize;
+           // System.out.println("start: " + start + " end: " + end + " Thread: " + i);
+            threads.add(new Thread(new CoordinateGeneratorThread(start, end,rand[i]), "T" + i));
+            last += incrementSize;
+        }
+
+
+        for (Thread t : threads)
+        {
+            t.start();
+        }
+        for (Thread t : threads)
+        {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return generatedPoints;
     }
 
-    public static synchronized int getCount() {
-        return count;
 
+    public class CoordinateGeneratorThread implements Runnable {
+        int start;
+        int end;
+        Random rnd;
+
+        public CoordinateGeneratorThread(int start, int end, Random rnd)
+        {
+            this.start = start;
+            this.end = end;
+            this.rnd = rnd;
+        }
+
+        public void run()
+        {
+            long s = System.currentTimeMillis();
+            for (int i = start; i < end; i++) {
+                while (true) {
+                    Point test = new Point();
+                    test.x = rnd.nextInt();
+                    test.y = rnd.nextInt();
+                    if (points.put(test, true) == null) {
+                        generatedPoints[i] = test;
+                        break;
+                    }
+                }
+            }
+            long e = System.currentTimeMillis() - s;
+           // System.out.println("mytime: "+ e + " start: " + start + " end: "+ end);
+        }
     }
-
 }
+
